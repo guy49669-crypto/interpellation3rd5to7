@@ -124,7 +124,7 @@ function cols(id,key,sort){
   return `<button class="col${S[key]==v?' on':''}" data-k="${key}" data-v="${v}" title="${v}${key=='days'?'天':''}：${rs.length}案"><em>${rs.length||''}</em><div class="s">${TN.map(t=>{const c=rs.filter(r=>r.theme==t).length;return c?`<i style="height:${c*u}px;background:${TC[t]}"></i>`:''}).join('')}</div><em>${v}${key=='days'?'天':''}</em></button>`}).join('')}
 function render(){
  const R=rows(),n=R.length,on=R.filter(r=>r.ontime).length,avg=n?(R.reduce((a,r)=>a+r.days,0)/n).toFixed(1):'-';
- $('kpis').innerHTML=[[`${R.filter(r=>r.reply).length} / ${D.length}`,'案已回復'],[new Set(R.map(r=>r.who)).size,'位議員'],[new Set(R.map(r=>r.doc)).size,'份發文公文'],[pc(on,n),'準時發文率'],[avg,'平均發文天數（自質詢日起）']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+ $('kpis').innerHTML=[[`${R.filter(r=>r.reply).length} / ${D.length}`,'案已回復'],[new Set(R.map(r=>r.who)).size,'位議員'],[new Set(R.map(r=>r.doc)).size,'份發文公文'],[pc(on,n),'準時發文率(系統結案期限前1日)'],[avg,'平均發文天數（自質詢日起）']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
  const any=FK.some(k=>S[k]);
  $('chips').innerHTML=FK.filter(k=>S[k]).map(k=>`<button class="chip" data-x="${k}">${LB[k]}：${esc(S[k])} ✕</button>`).join('')+(any?'<button class="chip" data-x="all">清除全部篩選</button>':'');
  donut(rows(['main']));bars('c-theme','theme');bars('c-who','who');matrix();cols('c-d','d','dk');cols('c-fin','fin','fk');cols('c-days','days','days');
