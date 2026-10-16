@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><title>綜企科大亂鬥</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f3efe6;--fg:#14213d;--card:#fff;--line:#14213d;--red:#d62839;--note:#ffd23f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1526;--fg:#f3efe6;--card:#17233f;--line:#f3efe6}}
+:root[data-theme="dark"]{--bg:#0d1526;--fg:#f3efe6;--card:#17233f;--line:#f3efe6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;text-align:center;padding:12px}
+h1{margin:4px 0;font-size:clamp(24px,5vw,38px);font-weight:900;letter-spacing:.06em}
+h1 span{background:var(--red);color:#fff;padding:0 .3em;display:inline-block;transform:rotate(-3deg)}
+p{margin:4px 0;font-size:14px}
+#grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;max-width:860px;margin:12px auto}
+#grid button{background:var(--card);color:var(--fg);border:2px solid var(--line);border-radius:6px;padding:10px 6px;font:inherit;cursor:pointer;box-shadow:4px 4px 0 var(--line)}
+#grid button:hover,#grid button:focus-visible{background:var(--note);color:#14213d;outline:none}
+#grid b{display:block;font-size:15px}#grid small{display:block;font-size:12px;opacity:.85;margin-top:2px}
+.e{font-size:36px;display:block}
+canvas{display:none;width:100%;max-width:800px;border:3px solid var(--line);border-radius:6px;background:#14213d;touch-action:none}
+.btn{background:var(--red);color:#fff;border:0;padding:10px 22px;font:inherit;font-weight:700;cursor:pointer;border-radius:4px;margin:8px}
+#re{display:none}#help{max-width:800px;margin:8px auto;font-size:13px;line-height:1.7;display:none;text-align:left;background:var(--card);border:2px solid var(--line);padding:8px 12px;border-radius:6px}
+</style></head><body>
+<h1>綜企科<span>大亂鬥</span></h1>
+<p id="msg">P1 請選角色</p>
+<label style="font-size:13px"><input type="checkbox" id="cpu" checked> P2 由電腦操控(取消勾選 = 兩人同機對打)</label>
+<div id="grid"></div>
+<canvas id="c" width="800" height="420"></canvas><br>
+<button class="btn" id="re">再戰一局</button>
+<div id="help"><b>P1</b>:A/D 移動、W 跳、J 撒料攻擊、K 補血(30藍)、L 組合技(40藍)、U 大絕(怒氣滿)<br><b>P2</b>:←/→ 移動、↑ 跳、1 攻擊、2 補血、3 組合技、4 大絕<br>藍條自動回復;被打、打人都會累積怒氣,怒氣 100 才能放大絕。</div>
+<script>
+const C=[
+{n:'阿管',r:'管考股長',e:'👨‍💼',c:'#e4572e',a:['撒肉桂粉','🟤'],h:'偷喝一口珍奶',m:'列管追蹤連環拳',u:['人民大量陳情',50,1,'📣']},
+{n:'管考一姐',r:'管考股',e:'👩‍💼',c:'#c2185b',a:['蒜泥白肉','🧄'],h:'下午茶補給',m:'KPI 紅燈衝擊',u:['長官臨時交辦事項',42,2,'📌']},
+{n:'衛生所一姐',r:'管考股・衛生所',e:'👩‍⚕️',c:'#2b9348',a:['花生粉','🥜'],h:'衛生所午茶時間',m:'疫苗連環針',u:['衛生所評鑑突襲',44,2,'📋']},
+{n:'規劃哥',r:'綜合規劃股',e:'👨‍🏫',c:'#2a9d8f',a:['辣椒醬','🌶️'],h:'泡一杯咖啡',m:'年度計畫三連擊',u:['計畫被退',48,1.5,'📄']},
+{n:'規劃姐',r:'綜合規劃股',e:'👩‍🏫',c:'#8e44ad',a:['九層塔','🌿'],h:'躲進茶水間',m:'預算書夾擊',u:['議員質詢轟炸',45,1.5,'🎤']},
+{n:'帥帥',r:'資訊股',e:'👨‍💻',c:'#264653',a:['胡椒鹽','🧂'],h:'重開機回血',m:'指令列連打',u:['網路大斷線',36,2.5,'📡']},
+{n:'資訊妹',r:'資訊股',e:'👩‍💻',c:'#3a86ff',a:['香菜','🥬'],h:'喝能量飲料',m:'防火牆護體拳',u:['系統維護中',40,2,'🛠️']},
+{n:'法專',r:'法專',e:'👨‍⚖️',c:'#6d4c41',a:['芥末','🟢'],h:'翻法規回神',m:'條文引用連擊',u:['不理智民眾電話騷擾',46,1.5,'📞']},
+{n:'科長',r:'科長',e:'💁‍♀️',c:'#b8860b',a:['蔥花','🌱'],h:'關起門泡茶',m:'核章連環蓋',u:['全科緊急會議',50,2,'🗓️']}];
+const $=id=>document.getElementById(id),cv=$('c'),x=cv.getContext('2d'),W=800,H=420,G=350;
+let S='sel',pick=[],F=[],P=[],T=[],R=[],B=null,shake=0,keys={},q={},cpuOn=true,last=0;
+const K=[{l:'a',r:'d',u:'w',a:'j',h:'k',m:'l',s:'u'},{l:'ArrowLeft',r:'ArrowRight',u:'ArrowUp',a:'1',h:'2',m:'3',s:'4'}];
+const g=$('grid');
+C.forEach((c,i)=>{const b=document.createElement('button');b.innerHTML=`<span class="e">${c.e}</span><b>${c.n}</b><small>${c.r}</small><small>大絕:${c.u[0]}</small>`;b.onclick=()=>choose(i);g.appendChild(b)});
+function choose(i){pick.push(i);if(pick.length==1)$('msg').textContent='P2 請選角色';else start()}
+function mk(c,px,id){return{c,x:px,y:G,vy:0,f:1,hp:100,mp:60,rg:0,cd:0,st:0,ct:0,ht:0,hf:0,id}}
+function start(){cpuOn=$('cpu').checked;F=[mk(C[pick[0]],160,0),mk(C[pick[1]],640,1)];P=[];T=[];R=[];B=null;S='play';g.style.display='none';cv.style.display='inline-block';$('help').style.display='block';$('re').style.display='none';$('msg').textContent='戰鬥開始!';last=performance.now();requestAnimationFrame(loop)}
+$('re').onclick=()=>{pick=[];S='sel';g.style.display='grid';cv.style.display='none';$('help').style.display='none';$('re').style.display='none';$('msg').textContent='P1 請選角色'};
+addEventListener('keydown',e=>{const k=e.key.length==1?e.key.toLowerCase():e.key;if(k.startsWith('Arrow'))e.preventDefault();if(!keys[k])q[k]=1;keys[k]=1});
+addEventListener('keyup',e=>{const k=e.key.length==1?e.key.toLowerCase():e.key;keys[k]=0});
+function inp(id){const k=K[id],h=n=>!!keys[k[n]],e=n=>{const v=q[k[n]];q[k[n]]=0;return !!v};return{l:h('l'),r:h('r'),u:h('u'),a:h('a'),h:e('h'),m:e('m'),s:e('s')}}
+function ai(f,o){const d=Math.abs(o.x-f.x),r={},z=Math.random;
+if(d>200)(o.x>f.x?r.r=1:r.l=1);else if(d<80&&z()<.5)(o.x>f.x?r.l=1:r.r=1);
+r.u=z()<.012;r.a=d<460&&z()<.05;r.h=f.hp<45&&f.mp>=30&&z()<.06;r.m=d<140&&f.mp>=40&&z()<.06;r.s=f.rg>=100&&z()<.1;return r}
+function txt(px,py,s,col,big){T.push({x:px,y:py,s,col:col||'#fff',t:1.1,big})}
+function hurt(t,d,s){t.hp=Math.max(0,t.hp-d);t.rg=Math.min(100,t.rg+d*.9);s.rg=Math.min(100,s.rg+d*.5);t.hf=.15;txt(t.x,t.y-100,'-'+d,'#ff5a5f')}
+function upd(dt){
+if(B){B.t-=dt;if(B.t<=0){const f=B.f,o=F[1-f.id],u=f.c.u;hurt(o,u[1],f);o.st=u[2];shake=.6;for(let i=0;i<40;i++)R.push({x:Math.random()*W,y:-Math.random()*300,vy:250+Math.random()*250,e:u[3]});B=null}return}
+F.forEach(f=>{const o=F[1-f.id],i=(f.id==1&&cpuOn)?ai(f,o):inp(f.id);
+f.cd-=dt;f.st-=dt;f.hf-=dt;f.mp=Math.min(100,f.mp+8*dt);f.f=o.x>f.x?1:-1;
+if(f.st>0){}else if(f.ct>0){f.x+=f.f*520*dt;f.ct-=dt;f.ht-=dt;if(f.ht<=0){f.ht=.15;if(Math.abs(o.x-f.x)<62&&Math.abs(o.y-f.y)<70){hurt(o,8,f);o.x+=f.f*10}}}
+else{if(i.l)f.x-=230*dt;if(i.r)f.x+=230*dt;if(i.u&&f.y>=G)f.vy=-620;
+if(i.a&&f.cd<=0){f.cd=.4;P.push({x:f.x+f.f*30,y:f.y-50,vx:f.f*520,e:f.c.a[1],o:f,d:8});if(Math.random()<.35)txt(f.x,f.y-110,f.c.a[0],'#ffd23f')}
+if(i.h&&f.mp>=30){f.mp-=30;f.hp=Math.min(100,f.hp+25);txt(f.x,f.y-110,f.c.h+' +25','#7ee081',1)}
+if(i.m&&f.mp>=40){f.mp-=40;f.ct=.6;f.ht=0;txt(f.x,f.y-110,f.c.m,'#ffd23f',1)}
+if(i.s&&f.rg>=100){f.rg=0;B={f,t:1.3}}}
+f.vy+=1400*dt;f.y+=f.vy*dt;if(f.y>=G){f.y=G;f.vy=0}f.x=Math.max(30,Math.min(W-30,f.x))});
+P.forEach(p=>{p.x+=p.vx*dt;const o=F[1-p.o.id];if(Math.abs(p.x-o.x)<30&&Math.abs(p.y-(o.y-40))<50){hurt(o,p.d,p.o);o.x+=Math.sign(p.vx)*14;p.dead=1}if(p.x<-20||p.x>W+20)p.dead=1});P=P.filter(p=>!p.dead);
+if(F.some(f=>f.hp<=0)){S='over';const w=F[0].hp>0?F[0]:F[1];$('msg').textContent=`${w.c.n}(P${w.id+1})獲勝!`;$('re').style.display='inline-block'}}
+function bar(px,py,w,v,col,h){x.fillStyle='#0008';x.fillRect(px,py,w,h);x.fillStyle=col;x.fillRect(px,py,w*v/100,h);x.strokeStyle='#fff';x.strokeRect(px,py,w,h)}
+function draw(dt){
+x.save();if(shake>0){shake-=dt;x.translate((Math.random()-.5)*14,(Math.random()-.5)*14)}
+x.fillStyle='#1d2d50';x.fillRect(0,0,W,H);x.fillStyle='#ffffff10';for(let i=0;i<5;i++)x.fillRect(60+i*150,90,100,110);
+x.fillStyle='#ffffff30';x.font='bold 22px sans-serif';x.textAlign='center';x.fillText('桃園市衛生局 綜合企劃科',W/2,70);
+x.fillStyle='#3b2f2f';x.fillRect(0,G,W,H-G);x.fillStyle='#5a4636';x.fillRect(0,G,W,6);
+F.forEach(f=>{x.fillStyle='#0006';x.beginPath();x.ellipse(f.x,G+4,26,7,0,0,7);x.fill();
+x.globalAlpha=f.hf>0?.5:1;x.fillStyle=f.c.c;x.beginPath();x.roundRect(f.x-18,f.y-62,36,52,8);x.fill();
+if(f.ct>0){x.fillStyle='#fff6';x.fillRect(f.x-f.f*60-20,f.y-60,40,40)}
+x.font='38px sans-serif';x.textAlign='center';x.fillText(f.c.e,f.x,f.y-52);x.globalAlpha=1;
+x.font='12px sans-serif';x.fillStyle='#fff';x.fillText(f.c.n,f.x,f.y-96);if(f.st>0){x.font='24px sans-serif';x.fillText('💫',f.x,f.y-80)}});
+P.forEach(p=>{x.font='26px sans-serif';x.textAlign='center';x.fillText(p.e,p.x,p.y)});
+R.forEach(r=>{r.y+=r.vy*dt;x.font='28px sans-serif';x.fillText(r.e,r.x,r.y)});R=R.filter(r=>r.y<H+30);
+T.forEach(t=>{t.t-=dt;t.y-=30*dt;x.globalAlpha=Math.max(0,t.t);x.font=(t.big?'bold 18px':'bold 15px')+' sans-serif';x.fillStyle=t.col;x.strokeStyle='#000';x.lineWidth=3;x.strokeText(t.s,t.x,t.y);x.fillText(t.s,t.x,t.y);x.globalAlpha=1});T=T.filter(t=>t.t>0);
+F.forEach((f,i)=>{const px=i?W-290:20;x.textAlign=i?'right':'left';x.font='bold 14px sans-serif';x.fillStyle='#fff';x.fillText(`${f.c.e} ${f.c.n}`,i?W-20:20,20);
+bar(px,26,270,f.hp,'#e63946',14);bar(px,44,270,f.mp,'#3a86ff',8);bar(px,56,270,f.rg,f.rg>=100?'#ffd23f':'#c77d0a',8);
+if(f.rg>=100){x.fillStyle='#ffd23f';x.font='bold 12px sans-serif';x.fillText('大絕可放!',i?W-20:20,80)}});
+if(B){x.fillStyle='#000c';x.fillRect(0,0,W,H);x.fillStyle='#d62839';x.fillRect(0,150,W,120);x.fillStyle='#fff';x.textAlign='center';x.font='bold 46px sans-serif';x.fillText(B.f.c.u[0],W/2,225);x.font='16px sans-serif';x.fillText(B.f.c.n+' 發動大絕!',W/2,255)}
+x.restore()}
+function loop(t){const dt=Math.min(.033,(t-last)/1000);last=t;if(S=='play')upd(dt);draw(dt);if(S!='sel')requestAnimationFrame(loop)}
+</script></body></html>
